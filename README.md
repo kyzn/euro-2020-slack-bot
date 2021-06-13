@@ -1,6 +1,6 @@
 # NAME
 
-euro-2020-slack v0.01
+euro-2020-slack v0.02
 
 # DESCRIPTION
 
