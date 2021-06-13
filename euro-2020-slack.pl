@@ -113,7 +113,7 @@ GetOptions(
   'dry'      => \$dry
 ) or die 'Encountered an error when parsing arguments';
 die 'You have to specify your football-data.org API token via --token' unless $token;
-die 'You have to specify at least one slack address via --slack' unless @slack;
+die 'You have to specify at least one slack address via --slack' unless @slack or $dry;
 
 # See all competitions at https://api.football-data.org/v2/competitions
 my $competition_id = 2018; # EURO 2020
