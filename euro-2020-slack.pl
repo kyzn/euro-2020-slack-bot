@@ -29,11 +29,6 @@ Once you have cpanm, run following to install perl dependencies.
 
     cpanm --installdeps .
 
-If you want to generate this readme, use this command below.
-
-    cpanm Pod::Markdown
-    pod2markdown euro-2020-slack.pl > README.md
-
 =head1 SYNOPSIS
 
 First, you will need a Slack incoming webhook URL. Here's how to get it:
@@ -81,13 +76,21 @@ Do a dry run: Don't post to slack, don't write to db.json
 
   perl euro-2020-slack.pl --token=... --dry
 
+
+=head1 CONTRIBUTING
+
+PRs are welcome, but you are encouraged to discuss it in issues first.
+Please don't edit this README directly, it's auto generated with commands below.
+
+    cpanm Pod::Markdown
+    pod2markdown euro-2020-slack.pl > README.md
+
 =head1 LICENSE
 
 MIT.
 
 This script talks to L<football-data.org|https://www.football-data.org/>,
 please check their terms for your use case.
-
 
 =head1 ATTRIBUTION
 
