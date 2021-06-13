@@ -10,6 +10,7 @@ euro-2020-slack v0.01
 package Euro2020Slack;
 our $VERSION = '0.01';
 
+use DDP;
 use File::Slurper qw/read_text write_text/;
 use Furl;
 use Getopt::Long;
@@ -152,10 +153,10 @@ my $furl = Furl->new;
 # "DB" is the local object read from db.json
 # It has the latest API call result stored under "latest"
 # and a few pointers under "posted" with match ids.
-# eg. { latest => [...], posted => { 1234 => {kickoff => 1}, ... }
+# eg. { latest => [...], posted => { 1234 => {kickoff => 1}, ... } }
 # "posted" events : kickoff end_of_first start_of_second
 #                   start_of_et1 start_of_et2
-#                   end_of_90 end_of_et1 end_of_et2
+#                   end_of_90 end_of_et1 end_of_et2 (TODO)
 #                   finished postponed canceled (from match status)
 my $db = {};
 if (-e $dbjson_filename){
@@ -218,13 +219,15 @@ LIVE: foreach my $live_match (@$live){
           }
         }
       }
-
-      if (!eq_deeply($live_match->{score}, $db_match->{score})){
+      elsif (!eq_deeply($live_match->{score}, $db_match->{score})){
         # Score has changed
         my $subtitle = make_subtitle($live_match, $db_match);
         post_to_slack($title, $subtitle);
         next LIVE;
       }
+
+      # No change, move on
+      next LIVE;
 
     }
   }
@@ -251,23 +254,23 @@ DB: foreach my $db_match (@{$db->{latest}}){
   }
 
   # Game exists in db, but not in live: Game finished (or postponed, canceled)
-    my $finished_match = download_single_game($db_match->{id});
-    my $status = ucfirst lc $finished_match->{status};
-    if (!$db->{posted}->{$finished_match->{id}}->{$status}){
-      my $title = make_title($finished_match);
-      my $subtitle = "Game $status";
-      post_to_slack($title, $subtitle);
-      $db->{posted}->{$finished_match->{id}}->{$status} = 1;
+  my $finished_match = download_single_game($db_match->{id});
+  my $status = lc $finished_match->{status};
+  if (!$db->{posted}->{$finished_match->{id}}->{$status}){
+    my $title = make_title($finished_match);
+    my $subtitle = "Game $status";
+    post_to_slack($title, $subtitle);
+    $db->{posted}->{$finished_match->{id}}->{$status} = 1;
   }
 }
 
 # Save db.json before finishing up
 $db->{latest} = $live;
 if ($dry){
-  use DDP; print np $db; print "\n\n";
+  print np $db; print "\n\n";
 }
 else {
-  write_text($dbjson_filename,encode_json($db));
+  write_text($dbjson_filename, encode_json($db));
 }
 
 # Helper subroutine to make title
