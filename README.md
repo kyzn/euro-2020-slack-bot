@@ -1,6 +1,6 @@
 # NAME
 
-euro-2020-slack v0.02
+euro-2020-slack v0.03
 
 # DESCRIPTION
 
@@ -33,9 +33,13 @@ Post to slack incoming webhook URL.
 
     perl euro-2020-slack.pl --token=.. --slack=https://hooks.slack.com/services/..
 
-Increase politeness sleep (defaults to 2 seconds)
+Increase politeness sleep for outgoing HTTP requests (defaults to 2 seconds)
 
     perl euro-2020-slack.pl --token=.. --slack=.. --sleep=10
+
+Change delay (in minutes) to post to slack (put 0 for no delay. defaults to 3 mins)
+
+    perl euro-2020-slack.pl --token=.. --slack=.. --delay=1
 
 Specify multiple Slack URLs to post to multiple workspaces
 
