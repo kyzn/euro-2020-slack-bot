@@ -295,7 +295,7 @@ sub make_title {
     $score = "-";
   }
   else {
-    if ($home_pk){
+    if (defined $home_pk){
       $score = "$home_score ($home_pk) - ($away_pk) $away_score";
     }
     else {
