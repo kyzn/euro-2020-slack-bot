@@ -60,9 +60,13 @@ Post to slack incoming webhook URL.
 
   perl euro-2020-slack.pl --token=.. --slack=https://hooks.slack.com/services/..
 
-Increase politeness sleep (defaults to 2 seconds)
+Increase politeness sleep for outgoing HTTP requests (defaults to 2 seconds)
 
   perl euro-2020-slack.pl --token=.. --slack=.. --sleep=10
+
+Change delay (in minutes) to post to slack (put 0 for no delay. defaults to 3 mins)
+
+  perl euro-2020-slack.pl --token=.. --slack=.. --delay=1
 
 Specify multiple Slack URLs to post to multiple workspaces
 
@@ -76,7 +80,6 @@ helpful if you are running multiple instances of script.
 Do a dry run: Don't post to slack, don't write to db.json
 
   perl euro-2020-slack.pl --token=... --dry
-
 
 =head1 CONTRIBUTING
 
@@ -105,6 +108,7 @@ Football data provided by the Football-Data.org API.
 
 my @slack = ();
 my $sleep = 2;
+my $delay = 3;
 my $token;
 my $dbjson_filename = './db.json';
 my $dry = 0;
@@ -113,11 +117,13 @@ GetOptions(
   'slack=s'  => \@slack,
   'token=s'  => \$token,
   'sleep=i'  => \$sleep,
+  'delay=i'  => \$delay,
   'dbjson=s' => \$dbjson_filename,
   'dry'      => \$dry
 ) or die 'Encountered an error when parsing arguments';
 die 'You have to specify your football-data.org API token via --token' unless $token;
 die 'You have to specify at least one slack address via --slack' unless @slack or $dry;
+die 'Delay has to be a non-negative integer' if $delay < 0;
 
 # See all competitions at https://api.football-data.org/v2/competitions
 my $competition_id = 2018; # EURO 2020
@@ -150,14 +156,27 @@ my $flag_of = {
 
 my $furl = Furl->new;
 
-# "DB" is the local object read from db.json
-# It has the latest API call result stored under "latest"
-# and a few pointers under "posted" with match ids.
-# eg. { latest => [...], posted => { 1234 => {kickoff => 1}, ... } }
-# "posted" events : kickoff end_of_first start_of_second
-#                   start_of_et1 start_of_et2
-#                   end_of_90 end_of_et1 end_of_et2 (TODO)
-#                   finished postponed canceled (from match status)
+# "DB" is the local object read from db.json. It has structure:
+# {
+#   latest    => [ ... ], # matches array from API, from previous call
+#   scheduled => {        # meaning "scheduled to be posted, don't schedule it again"
+#     1234      => {         # match.id
+#       kickoff         => 1,  # other events: start_of_et1, start_of_et2
+#       end_of_first    => 1,  # end_of_90, end_of_et1, end_of_et2
+#       start_of_second => 1,  # finished postponed canceled (match.status)
+#       ...
+#     },
+#     2345 => {..}           # there can be multiple matches tracked
+#   },
+#   queue     => [        # May be out of order, esp. if delay parameter is tweaked
+#     {
+#       post_on_or_after => 1623650171, # epoch time (see `perldoc -f time`)
+#       title            => "Flag Home - Away Flag",
+#       subtitle         => "Kickoff"
+#     },
+#     { ... }             # There can be multiple tweets in queue
+#   ]
+# }
 my $db = {};
 if (-e $dbjson_filename){
   my $db_json = read_text($dbjson_filename);
@@ -183,37 +202,37 @@ LIVE: foreach my $live_match (@$live){
         if ($live_match->{status} eq "PAUSED"){
           # TODO: end_of_90 end_of_et1 end_of_et2
           # I need to know what's the "duration" is at the end of 90 mins. EXTRA_TIME?
-          if (!$db->{posted}->{$live_match->{id}}->{end_of_first}){
-            post_to_slack($title, "End of first half");
-            $db->{posted}->{$live_match->{id}}->{end_of_first} = 1;
+          if (!$db->{scheduled}->{$live_match->{id}}->{end_of_first}){
+            schedule_post($title, "End of first half");
+            $db->{scheduled}->{$live_match->{id}}->{end_of_first} = 1;
             next LIVE;
           }
         }
 
         elsif ($live_match->{status} eq "IN_PLAY"){
           if ($live_match->{score}->{duration} eq 'REGULAR'){
-            if (!$db->{posted}->{$live_match->{id}}->{start_of_second}){
-              post_to_slack($title, "Second half begins");
-              $db->{posted}->{$live_match->{id}}->{start_of_second} = 1;
+            if (!$db->{scheduled}->{$live_match->{id}}->{start_of_second}){
+              schedule_post($title, "Second half begins");
+              $db->{scheduled}->{$live_match->{id}}->{start_of_second} = 1;
               next LIVE;
             }
           }
           elsif ($live_match->{score}->{duration} eq 'EXTRA_TIME'){
-            if (!$db->{posted}->{$live_match->{id}}->{start_of_et1}){
-              post_to_slack($title, "First period of extra time begins");
-              $db->{posted}->{$live_match->{id}}->{start_of_et1} = 1;
+            if (!$db->{scheduled}->{$live_match->{id}}->{start_of_et1}){
+              schedule_post($title, "First period of extra time begins");
+              $db->{scheduled}->{$live_match->{id}}->{start_of_et1} = 1;
               next LIVE;
             }
-            elsif (!$db->{posted}->{$live_match->{id}}->{start_of_et2}){
-              post_to_slack($title, "Second period of extra time begins");
-              $db->{posted}->{$live_match->{id}}->{start_of_et2} = 1;
+            elsif (!$db->{scheduled}->{$live_match->{id}}->{start_of_et2}){
+              schedule_post($title, "Second period of extra time begins");
+              $db->{scheduled}->{$live_match->{id}}->{start_of_et2} = 1;
               next LIVE;
             }
           }
           elsif ($live_match->{score}->{duration} eq 'PENALTY_SHOOTOUT'){
-            if (!$db->{posted}->{$live_match->{id}}->{start_of_pk}){
-              post_to_slack($title, "Penalty shootout begins");
-              $db->{posted}->{$live_match->{id}}->{start_of_pk} = 1;
+            if (!$db->{scheduled}->{$live_match->{id}}->{start_of_pk}){
+              schedule_post($title, "Penalty shootout begins");
+              $db->{scheduled}->{$live_match->{id}}->{start_of_pk} = 1;
               next LIVE;
             }
           }
@@ -222,7 +241,7 @@ LIVE: foreach my $live_match (@$live){
       elsif (!eq_deeply($live_match->{score}, $db_match->{score})){
         # Score has changed
         my $subtitle = make_subtitle($live_match, $db_match);
-        post_to_slack($title, $subtitle);
+        schedule_post($title, $subtitle);
         next LIVE;
       }
 
@@ -233,7 +252,7 @@ LIVE: foreach my $live_match (@$live){
   }
 
   # Game exists in live but not in db: Just started
-  if (!$db->{posted}->{$live_match->{id}}->{kickoff}){
+  if (!$db->{scheduled}->{$live_match->{id}}->{kickoff}){
     my $stage = $live_match->{stage};
     $stage =~ s/_/ /g;
     $stage = ucfirst lc $stage;
@@ -241,8 +260,8 @@ LIVE: foreach my $live_match (@$live){
     my $matchday = $live_match->{matchday};
     my $title_no_score = make_title($live_match, 1);
     my $subtitle = "Kickoff - " . ($group && $matchday ? "$group Matchday $matchday" : "$stage");
-    post_to_slack($title_no_score, $subtitle);
-    $db->{posted}->{$live_match->{id}}->{kickoff} = 1;
+    schedule_post($title_no_score, $subtitle);
+    $db->{scheduled}->{$live_match->{id}}->{kickoff} = 1;
   }
 }
 
@@ -256,13 +275,22 @@ DB: foreach my $db_match (@{$db->{latest}}){
   # Game exists in db, but not in live: Game finished (or postponed, canceled)
   my $finished_match = download_single_game($db_match->{id});
   my $status = lc $finished_match->{status};
-  if (!$db->{posted}->{$finished_match->{id}}->{$status}){
+  if (!$db->{scheduled}->{$finished_match->{id}}->{$status}){
     my $title = make_title($finished_match);
     my $subtitle = "Game $status";
-    post_to_slack($title, $subtitle);
-    $db->{posted}->{$finished_match->{id}}->{$status} = 1;
+    schedule_post($title, $subtitle);
+    $db->{scheduled}->{$finished_match->{id}}->{$status} = 1;
   }
 }
+
+# Now that we processed new events, let's go through the post queue
+foreach my $item (@{$db->{queue}}){
+  if ($item->{post_on_or_after} <= time()){
+    post_to_slack($item->{title}, $item->{subtitle});
+    $item->{posted} = 1;
+  }
+}
+@{$db->{queue}} = grep {!$_->{posted}} @{$db->{queue}};
 
 # Save db.json before finishing up
 $db->{latest} = $live;
@@ -397,6 +425,16 @@ sub download_single_game {
   die 'Error encountered when parsing response' unless $json;
 
   return $json->{match};
+}
+
+sub schedule_post {
+  my ($title, $subtitle) = @_;
+  my $post = {
+    post_on_or_after => time() + 60 * $delay - 1,
+    title            => $title,
+    subtitle         => $subtitle,
+  };
+  push @{$db->{queue}}, $post;
 }
 
 # Helper subroutine to post to slack
