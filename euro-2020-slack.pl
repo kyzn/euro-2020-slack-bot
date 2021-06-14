@@ -3,12 +3,12 @@ use strict;
 
 =head1 NAME
 
-euro-2020-slack v0.02
+euro-2020-slack v0.03
 
 =cut
 
 package Euro2020Slack;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use DDP;
 use File::Slurper qw/read_text write_text/;
