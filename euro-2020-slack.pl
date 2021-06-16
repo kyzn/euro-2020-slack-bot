@@ -87,7 +87,7 @@ PRs are welcome, but you are encouraged to discuss it in issues first.
 Please don't edit this README directly, it's auto generated with commands below.
 
     cpanm Pod::Markdown
-    pod2markdown euro-2020-slack.pl > README.md
+    echo -e '![A sample run](sample.png)\n\n' > README.md && pod2markdown euro-2020-slack.pl >> README.md
 
 =head1 LICENSE
 
