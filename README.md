@@ -1,8 +1,9 @@
 ![A sample run](sample.png)
 
+
 # NAME
 
-euro-2020-slack v0.03
+euro-2020-slack v0.04
 
 # DESCRIPTION
 
@@ -19,7 +20,13 @@ Once you have cpanm, run following to install perl dependencies.
 
 # SYNOPSIS
 
-First, you will need a Slack incoming webhook URL. Here's how to get it:
+First, you will need a Football-Data.org token.
+
+- Go to [https://www.football-data.org/client/register](https://www.football-data.org/client/register) and register
+- You will get an email titled "Your free API-key for football-data.org"
+- Copy the token, keep it safe
+
+Then, you will need a Slack incoming webhook URL. Here's how to get it:
 
 - Create an app at [https://api.slack.com/apps?new\_app=1](https://api.slack.com/apps?new_app=1)
 - Choose "From Scratch" if asked
