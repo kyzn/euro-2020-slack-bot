@@ -200,11 +200,26 @@ LIVE: foreach my $live_match (@$live){
         # Status has changed. What's the new status?
 
         if ($live_match->{status} eq "PAUSED"){
-          # TODO: end_of_90 end_of_et1 end_of_et2
-          # I need to know what's the "duration" is at the end of 90 mins. EXTRA_TIME?
           if (!$db->{scheduled}->{$live_match->{id}}->{end_of_first}){
             schedule_post($title, "End of first half");
             $db->{scheduled}->{$live_match->{id}}->{end_of_first} = 1;
+            next LIVE;
+          }
+          elsif (
+            $db->{scheduled}->{$live_match->{id}}->{start_of_et1} &&
+            !$db->{scheduled}->{$live_match->{id}}->{start_of_et2} &&
+            !$db->{scheduled}->{$live_match->{id}}->{end_of_et1}
+          ){
+            schedule_post($title, "End of first period of extra time");
+            $db->{scheduled}->{$live_match->{id}}->{end_of_et1} = 1;
+            next LIVE;
+          }
+          elsif (
+            $db->{scheduled}->{$live_match->{id}}->{start_of_et2} &&
+            !$db->{scheduled}->{$live_match->{id}}->{end_of_et2}
+          ){
+            schedule_post($title, "End of second period of extra time");
+            $db->{scheduled}->{$live_match->{id}}->{end_of_et2} = 1;
             next LIVE;
           }
         }
