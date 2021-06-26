@@ -32,7 +32,20 @@ Once you have cpanm, run following to install perl dependencies.
 
 =head1 SYNOPSIS
 
-First, you will need a Slack incoming webhook URL. Here's how to get it:
+
+First, you will need a Football-Data.org token.
+
+=over
+
+=item Go to L<https://www.football-data.org/client/register> and register
+
+=item You will get an email titled "Your free API-key for football-data.org"
+
+=item Copy the token, keep it safe
+
+=back
+
+Then, you will need a Slack incoming webhook URL. Here's how to get it:
 
 =over
 
