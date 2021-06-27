@@ -1,3 +1,4 @@
+requires 'DateTime';
 requires 'DDP';
 requires 'File::Slurper';
 requires 'Furl';

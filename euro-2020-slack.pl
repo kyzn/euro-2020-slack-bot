@@ -10,6 +10,7 @@ euro-2020-slack v0.04
 package Euro2020Slack;
 our $VERSION = '0.04';
 
+use DateTime;
 use DDP;
 use File::Slurper qw/read_text write_text/;
 use Furl;
@@ -125,6 +126,7 @@ my $delay = 3;
 my $token;
 my $dbjson_filename = './db.json';
 my $dry = 0;
+my $savetmp = 0;
 
 GetOptions(
   'slack=s'  => \@slack,
@@ -132,7 +134,8 @@ GetOptions(
   'sleep=i'  => \$sleep,
   'delay=i'  => \$delay,
   'dbjson=s' => \$dbjson_filename,
-  'dry'      => \$dry
+  'dry'      => \$dry,
+  'savetmp'  => \$savetmp,
 ) or die 'Encountered an error when parsing arguments';
 die 'You have to specify your football-data.org API token via --token' unless $token;
 die 'You have to specify at least one slack address via --slack' unless @slack or $dry;
@@ -315,6 +318,11 @@ if ($dry){
 }
 else {
   write_text($dbjson_filename, encode_json($db));
+}
+
+if($savetmp){
+  my $date_suffix = DateTime->now->iso8601;
+  write_text("$dbjson_filename.$date_suffix", encode_json($db));
 }
 
 # Helper subroutine to make title
