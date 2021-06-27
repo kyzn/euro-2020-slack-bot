@@ -174,9 +174,9 @@ my $furl = Furl->new;
 #   latest    => [ ... ], # matches array from API, from previous call
 #   scheduled => {        # meaning "scheduled to be posted, don't schedule it again"
 #     1234      => {         # match.id
-#       kickoff         => 1,  # other events: start_of_et1, start_of_et2
-#       end_of_first    => 1,  # end_of_90, end_of_et1, end_of_et2
-#       start_of_second => 1,  # finished postponed canceled (match.status)
+#       kickoff         => 1,  # other events: start_of_et,
+#       end_of_first    => 1,  # end_of_90, end_of_et,
+#       start_of_second => 1,  # finished, postponed, canceled (match.status)
 #       ...
 #     },
 #     2345 => {..}           # there can be multiple matches tracked
@@ -213,27 +213,19 @@ LIVE: foreach my $live_match (@$live){
         # Status has changed. What's the new status?
 
         if ($live_match->{status} eq "PAUSED"){
-          if (!$db->{scheduled}->{$live_match->{id}}->{end_of_first}){
-            schedule_post($title, "End of first half");
-            $db->{scheduled}->{$live_match->{id}}->{end_of_first} = 1;
-            next LIVE;
+          if ($live_match->{score}->{duration} eq 'REGULAR'){
+            if (!$db->{scheduled}->{$live_match->{id}}->{end_of_first}){
+              schedule_post($title, "End of first half");
+              $db->{scheduled}->{$live_match->{id}}->{end_of_first} = 1;
+              next LIVE;
+            }
           }
-          elsif (
-            $db->{scheduled}->{$live_match->{id}}->{start_of_et1} &&
-            !$db->{scheduled}->{$live_match->{id}}->{start_of_et2} &&
-            !$db->{scheduled}->{$live_match->{id}}->{end_of_et1}
-          ){
-            schedule_post($title, "End of first period of extra time");
-            $db->{scheduled}->{$live_match->{id}}->{end_of_et1} = 1;
-            next LIVE;
-          }
-          elsif (
-            $db->{scheduled}->{$live_match->{id}}->{start_of_et2} &&
-            !$db->{scheduled}->{$live_match->{id}}->{end_of_et2}
-          ){
-            schedule_post($title, "End of second period of extra time");
-            $db->{scheduled}->{$live_match->{id}}->{end_of_et2} = 1;
-            next LIVE;
+          elsif ($live_match->{score}->{duration} eq 'EXTRA_TIME'){
+            if (!$db->{scheduled}->{$live_match->{id}}->{end_of_et}){
+              schedule_post($title, "End of extra time");
+              $db->{scheduled}->{$live_match->{id}}->{end_of_et} = 1;
+              next LIVE;
+            }
           }
         }
 
@@ -246,14 +238,9 @@ LIVE: foreach my $live_match (@$live){
             }
           }
           elsif ($live_match->{score}->{duration} eq 'EXTRA_TIME'){
-            if (!$db->{scheduled}->{$live_match->{id}}->{start_of_et1}){
-              schedule_post($title, "First period of extra time begins");
-              $db->{scheduled}->{$live_match->{id}}->{start_of_et1} = 1;
-              next LIVE;
-            }
-            elsif (!$db->{scheduled}->{$live_match->{id}}->{start_of_et2}){
-              schedule_post($title, "Second period of extra time begins");
-              $db->{scheduled}->{$live_match->{id}}->{start_of_et2} = 1;
+            if (!$db->{scheduled}->{$live_match->{id}}->{start_of_et}){
+              schedule_post($title, "Extra time begins");
+              $db->{scheduled}->{$live_match->{id}}->{start_of_et} = 1;
               next LIVE;
             }
           }
@@ -266,6 +253,7 @@ LIVE: foreach my $live_match (@$live){
           }
         }
       }
+
       elsif (!eq_deeply($live_match->{score}, $db_match->{score})){
         # Score has changed
         my $subtitle = make_subtitle($live_match, $db_match);
