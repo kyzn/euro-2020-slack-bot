@@ -177,8 +177,8 @@ my $furl = Furl->new;
 #   latest    => [ ... ], # matches array from API, from previous call
 #   scheduled => {        # meaning "scheduled to be posted, don't schedule it again"
 #     1234      => {         # match.id
-#       kickoff         => 1,  # other events: start_of_et,
-#       end_of_first    => 1,  # end_of_90, end_of_et,
+#       kickoff         => 1,  # kickoff, end_of_first, start_of_second, end_of_90,
+#       end_of_first    => 1,  # start_of_et, end_of_et, start_of_pk,
 #       start_of_second => 1,  # finished, postponed, canceled (match.status)
 #       ...
 #     },
@@ -224,6 +224,13 @@ LIVE: foreach my $live_match (@$live){
             }
           }
           elsif ($live_match->{score}->{duration} eq 'EXTRA_TIME'){
+            if (!$db->{scheduled}->{$live_match->{id}}->{end_of_90}){
+              schedule_post($title, "End of 90 minutes");
+              $db->{scheduled}->{$live_match->{id}}->{end_of_90} = 1;
+              next LIVE;
+            }
+          }
+          elsif ($live_match->{score}->{duration} eq 'PENALTY_SHOOTOUT'){
             if (!$db->{scheduled}->{$live_match->{id}}->{end_of_et}){
               schedule_post($title, "End of extra time");
               $db->{scheduled}->{$live_match->{id}}->{end_of_et} = 1;
