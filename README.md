@@ -3,7 +3,7 @@
 
 # NAME
 
-euro-2020-slack v0.05
+euro-2020-slack v0.06
 
 # DESCRIPTION
 

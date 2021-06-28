@@ -3,12 +3,12 @@ use strict;
 
 =head1 NAME
 
-euro-2020-slack v0.05
+euro-2020-slack v0.06
 
 =cut
 
 package Euro2020Slack;
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use DateTime;
 use DDP;
